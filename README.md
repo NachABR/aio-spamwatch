@@ -1,22 +1,13 @@
-# SpamWatch API Python Wrapper
+# Asyncio SpamWatch API Wrapper
 
 ## Basic Usage
 
 ```python
-import spamwatch
-token = 'A_LONG_TOKEN_HERE'
-client = spamwatch.Client(token)
-ban = client.get_ban(777000)
-print(ban.reason)
-```
-
-## Async
-
-```python
-import spamwatch
 import asyncio
+import aio_sw
+
 token = 'A_LONG_TOKEN_HERE'
-client = spamwatch.aioClient(token)
+client = aio_sw.Client(token)
 
 async def main():
     r = await client.version()

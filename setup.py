@@ -8,15 +8,15 @@ with open("README.md", "r") as fh:
     long_description = fh.read()
 
 setuptools.setup(
-    name='spamwatch',
-    version='0.3.0',
-    description='SpamWatch API Wrapper',
+    name='async-spamwatch',
+    version='0.0.1',
+    description='Asyncio SpamWatch API Wrapper',
     long_description=long_description,
     long_description_content_type="text/markdown",
     license='License :: OSI Approved :: GNU Lesser General Public License v3 (LGPLv3)',
-    author='Simon Schürrle',
-    author_email='simon@spamwat.ch',
-    url='https://github.com/SpamWatch/spamwatch-py',
+    author='null',
+    author_email='null',
+    url='https://github.com/MeguRobot/async-spamwatch',
     packages=setuptools.find_packages(),
     classifiers=[
         'Development Status :: 4 - Beta',
