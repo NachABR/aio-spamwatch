@@ -8,7 +8,7 @@ with open("README.md", "r") as fh:
     long_description = fh.read()
 
 setuptools.setup(
-    name='async-spamwatch',
+    name='aio-spamwatch',
     version='0.0.1',
     description='Asyncio SpamWatch API Wrapper',
     long_description=long_description,
@@ -16,7 +16,7 @@ setuptools.setup(
     license='License :: OSI Approved :: GNU Lesser General Public License v3 (LGPLv3)',
     author='null',
     author_email='null',
-    url='https://github.com/MeguRobot/async-spamwatch',
+    url='https://github.com/MeguRobot/aio-spamwatch',
     packages=setuptools.find_packages(),
     classifiers=[
         'Development Status :: 4 - Beta',
