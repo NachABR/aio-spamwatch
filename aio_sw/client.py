@@ -14,7 +14,12 @@ from .types import Ban, Permission, Token
 class Client:
     """Client to interface with the SpamWatch API."""
 
-    def __init__(self, token: str, *, host: str = 'https://api.spamwat.ch') -> None:
+    def __init__(self,
+                token: str,
+                *,
+                host: str = 'https://api.spamwat.ch',
+                loop: Optional[asyncio.AbstractEventLoop] = None
+                ) -> None:
         """
         Args:
             token: The Authorization Token
@@ -23,16 +28,23 @@ class Client:
         self._host = host
         self._session = aiohttp.ClientSession()
         self._session.headers.update({"Authorization": f"Bearer {token}"})
-        loop = asyncio.get_event_loop()
-        self._token = loop.run_until_complete(self.get_self())
+        if not loop:
+            try:
+                self._loop = asyncio.get_event_loop()
+            except RuntimeError:
+                self._loop = asyncio.new_event_loop()
+                asyncio.set_event_loop(self._loop)
+        self._token = self._loop.run_until_complete(self.get_self())
         self.permission = self._token.permission
 
     def __del__(self):
-        loop = asyncio.get_event_loop()
-        loop.run_until_complete(self._session.close())
+        self._loop.run_until_complete(self._session.close())
 
-    async def _make_request(self, path: str, method: str = 'get',
-                            **kwargs: Dict[Any, Any]) -> Tuple[Union[Dict, str], ClientResponse]:
+    async def _make_request(self,
+                            path: str,
+                            method: str = 'get',
+                            **kwargs: Dict[Any, Any]
+                            ) -> Any:
         """
         Make a request and handle errors
 
@@ -41,18 +53,18 @@ class Client:
             method: The request method. Defaults to GET
             **kwargs: Keyword arguments passed to the request method.
 
-        Returns: The json response and the request object
+        Returns: The json response
 
         """
-        req = await self._session.request(method.upper(), f'{self._host}/{path}',
+        req = await self._session._request(method=method.upper(), str_or_url=f'{self._host}/{path}',
                                           **kwargs)
         if req.status in [200, 201]:
             try:
-                return (await req.json()), req
+                return (await req.json())
             except JSONDecodeError:
-                return (await req.text), req
+                return (await req.text())
         if req.status == 204:
-            return {}, req
+            return {}
         elif req.status == 401:
             raise UnauthorizedError("Make sure your Token is correct")
         elif req.status == 403:
@@ -66,7 +78,7 @@ class Client:
 
     async def version(self) -> Dict[str, str]:
         """Get the API version"""
-        return (await self._make_request('version'))[0]
+        return (await self._make_request('version'))
 
     # region Tokens
     async def get_tokens(self) -> List[Token]:
@@ -76,7 +88,7 @@ class Client:
         Returns: A list of Tokens
 
         """
-        data, req = await self._make_request('tokens')
+        data = await self._make_request('tokens')
         return [Token(**token) for token in data]
 
     async def create_token(self, userid: int, permission: Permission) -> Token:
@@ -90,14 +102,14 @@ class Client:
         Returns: The created Token
 
         """
-        data, req = await self._make_request('tokens', method='post',
+        data = await self._make_request('tokens', method='post',
                                              json={"id": userid,
                                                    "permission": permission.name})
         return Token(**data)
 
     async def get_self(self) -> Token:
         """Gets the Token that the request was made with."""
-        data, req = await self._make_request('tokens/self')
+        data = await self._make_request('tokens/self')
         return Token(**data)
 
     async def get_token(self, token_id: int) -> Token:
@@ -110,7 +122,7 @@ class Client:
         Returns: The token
 
         """
-        data, req = await self._make_request(f'tokens/{token_id}')
+        data = await self._make_request(f'tokens/{token_id}')
         return Token(**data)
 
     async def delete_token(self, token_id: int) -> None:
@@ -132,11 +144,11 @@ class Client:
         Returns: A list of Bans
 
         """
-        data, req = await self._make_request('banlist')
+        data = await self._make_request('banlist')
         return [Ban(**ban) for ban in data]
 
     async def get_bans_min(self) -> List[int]:
-        data, req = await self._make_request('banlist/all')
+        data = await self._make_request('banlist/all')
 
         if data:
             if isinstance(data, int):
@@ -182,9 +194,9 @@ class Client:
 
         """
         try:
-            data, req = await self._make_request(f'banlist/{user_id}')
+            data = await self._make_request(f'banlist/{user_id}')
             return Ban(**data)
-        except NotFoundError as err:
+        except NotFoundError:
             return False
 
     async def delete_ban(self, user_id: int) -> None:
@@ -196,6 +208,6 @@ class Client:
     # region Stats
     async def stats(self) -> Dict[str, int]:
         """Get ban stats"""
-        data, req = await self._make_request('stats')
+        data = await self._make_request('stats')
         return data
     # endregion
