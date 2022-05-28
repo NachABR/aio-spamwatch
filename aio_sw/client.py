@@ -26,19 +26,27 @@ class Client:
             host: The API host. Defaults to the official API.
         """
         self._host = host
-        self._session = aiohttp.ClientSession()
-        self._session.headers.update({"Authorization": f"Bearer {token}"})
+        self._kk = token
+        self._session = None
         if not loop:
             try:
-                self._loop = asyncio.get_event_loop()
+                self._loop = asyncio.get_running_loop()
             except RuntimeError:
                 self._loop = asyncio.new_event_loop()
                 asyncio.set_event_loop(self._loop)
-        self._token = self._loop.run_until_complete(self.get_self())
-        self.permission = self._token.permission
+        
 
     def __del__(self):
-        self._loop.run_until_complete(self._session.close())
+        try:
+            loop = asyncio.get_running_loop()
+            asyncio.create_task(self._close_session())
+        except RuntimeError:
+            loop = asyncio.new_event_loop()
+            loop.run_until_complete(self._close_session())
+
+    async def _close_session(self):
+        if not self._session.closed:
+            await self._session.close()
 
     async def _make_request(self,
                             path: str,
@@ -56,6 +64,12 @@ class Client:
         Returns: The json response
 
         """
+        if not self._session:
+            self._session = aiohttp.ClientSession()
+            self._session.headers.update({"Authorization": f"Bearer {self._kk}"})
+            self._token = await self.get_self()
+            self.permission = self._token.permission
+
         req = await self._session._request(method=method.upper(), str_or_url=f'{self._host}/{path}',
                                           **kwargs)
         if req.status in [200, 201]:
