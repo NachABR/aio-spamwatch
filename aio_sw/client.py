@@ -82,7 +82,7 @@ class Client:
                     elif req.status == 429:
                         raise TooManyRequests(method=path, until=(await req.json()).get("until", 0))
                     else:
-                        raise await Error(status=req.status, text=await req.text(), url=req.url)
+                        raise Error(status=req.status, text=await req.text(), url=req.url)
 
     async def version(self) -> Dict[str, str]:
         """Get the API version"""
