@@ -9,7 +9,7 @@ with open("README.md", "r") as fh:
 
 setuptools.setup(
     name="aio-spamwatch",
-    version="0.0.3",
+    version="0.0.4",
     description="Asyncio SpamWatch API Wrapper",
     long_description=long_description,
     long_description_content_type="text/markdown",
