@@ -1,11 +1,9 @@
 """Client class for the Wrapper."""
 from json import JSONDecodeError
-from typing import Dict, List, Tuple, Union, Any, Optional
+from typing import Dict, List, Union, Any, Optional
 
 import asyncio
-
 import aiohttp
-from aiohttp import ClientResponse
 
 from .errors import Error, Forbidden, NotFoundError, UnauthorizedError, TooManyRequests
 from .types import Ban, Permission, Token
@@ -14,45 +12,36 @@ from .types import Ban, Permission, Token
 class Client:
     """Client to interface with the SpamWatch API."""
 
-    def __init__(self,
-                token: str,
-                *,
-                host: str = 'https://api.spamwat.ch',
-                loop: Optional[asyncio.AbstractEventLoop] = None
-                ) -> None:
+    def __init__(
+        self,
+        token: str,
+        *,
+        host: str = "https://api.spamwat.ch",
+        loop: Optional[asyncio.AbstractEventLoop] = None,
+    ) -> None:
         """
         Args:
             token: The Authorization Token
             host: The API host. Defaults to the official API.
         """
-        self._host = host
-        self._kk = token
-        self._session = None
+        self._host: str = host
+
         if not loop:
             try:
                 self._loop = asyncio.get_running_loop()
             except RuntimeError:
                 self._loop = asyncio.new_event_loop()
                 asyncio.set_event_loop(self._loop)
-        
+        else:
+            self._loop = loop
 
-    def __del__(self):
-        try:
-            loop = asyncio.get_running_loop()
-            asyncio.create_task(self._close_session())
-        except RuntimeError:
-            loop = asyncio.new_event_loop()
-            loop.run_until_complete(self._close_session())
+        self.tokn = token
+        self._token: Token = self._loop.run_until_complete(self.get_self())
+        self._permission: Permission = self._token.permission
 
-    async def _close_session(self):
-        if not self._session.closed:
-            await self._session.close()
-
-    async def _make_request(self,
-                            path: str,
-                            method: str = 'get',
-                            **kwargs: Dict[Any, Any]
-                            ) -> Any:
+    async def _make_request(
+        self, path: str, method: str = "get", **kwargs: Dict[Any, Any]
+    ) -> Any:
         """
         Make a request and handle errors
 
@@ -64,35 +53,40 @@ class Client:
         Returns: The json response
 
         """
-        if not self._session:
-            self._session = aiohttp.ClientSession()
-            self._session.headers.update({"Authorization": f"Bearer {self._kk}"})
-            self._token = await self.get_self()
-            self.permission = self._token.permission
+        async with aiohttp.ClientSession(
+            headers={"Authorization": f"Bearer {self.tokn}"}
+        ) as session:
+            async with session.request(
+                method=method.upper(), url=f"{self._host}/{path}", **kwargs
+            ) as req:
 
-        req = await self._session._request(method=method.upper(), str_or_url=f'{self._host}/{path}',
-                                          **kwargs)
-        if req.status in [200, 201]:
-            try:
-                return (await req.json())
-            except JSONDecodeError:
-                return (await req.text())
-        if req.status == 204:
-            return {}
-        elif req.status == 401:
-            raise UnauthorizedError("Make sure your Token is correct")
-        elif req.status == 403:
-            raise Forbidden(self._token)
-        elif req.status == 404:
-            raise NotFoundError()
-        elif req.status == 429:
-            raise TooManyRequests(path, (await req.json()).get('until', 0))
-        else:
-            raise Error(req)
+                if req.status in [200, 201]:
+                    try:
+                        resp = await req.json()
+                    except JSONDecodeError:
+                        resp = await req.text()
+                    await session.close()
+                    return resp
+
+                if req.status == 204:
+                    await session.close()
+                    return {}
+                if req.status > 400:
+                    await session.close()
+                    if req.status == 401:
+                        raise UnauthorizedError("Make sure your Token is correct")
+                    elif req.status == 403:
+                        raise Forbidden(self._token)
+                    elif req.status == 404:
+                        raise NotFoundError()
+                    elif req.status == 429:
+                        raise TooManyRequests(method=path, until=(await req.json()).get("until", 0))
+                    else:
+                        raise await Error(status=req.status, text=await req.text(), url=req.url)
 
     async def version(self) -> Dict[str, str]:
         """Get the API version"""
-        return (await self._make_request('version'))
+        return await self._make_request(path="version")
 
     # region Tokens
     async def get_tokens(self) -> List[Token]:
@@ -102,28 +96,30 @@ class Client:
         Returns: A list of Tokens
 
         """
-        data = await self._make_request('tokens')
+        data = await self._make_request(path="tokens")
         return [Token(**token) for token in data]
 
-    async def create_token(self, userid: int, permission: Permission) -> Token:
+    async def create_token(self, user_id: int, permission: Permission) -> Token:
         """Creates a token with the given parameters
         Requires Root permission
 
         Args:
-            userid: The Telegram User ID of the token owner
+            user_id: The Telegram User ID of the token owner
             permission: The permission level the Token should have
 
         Returns: The created Token
 
         """
-        data = await self._make_request('tokens', method='post',
-                                             json={"id": userid,
-                                                   "permission": permission.name})
+        data = await self._make_request(
+            path="tokens",
+            method="post",
+            json={"id": user_id, "permission": permission.name},
+        )
         return Token(**data)
 
     async def get_self(self) -> Token:
         """Gets the Token that the request was made with."""
-        data = await self._make_request('tokens/self')
+        data = await self._make_request(path="tokens/self")
         return Token(**data)
 
     async def get_token(self, token_id: int) -> Token:
@@ -136,7 +132,7 @@ class Client:
         Returns: The token
 
         """
-        data = await self._make_request(f'tokens/{token_id}')
+        data = await self._make_request(path=f"tokens/{token_id}")
         return Token(**data)
 
     async def delete_token(self, token_id: int) -> None:
@@ -146,7 +142,7 @@ class Client:
             token_id: The id of the token
 
         """
-        await self._make_request(f'tokens/{token_id}', method='delete')
+        await self._make_request(path=f"tokens/{token_id}", method="delete")
 
     # endregion
 
@@ -158,35 +154,33 @@ class Client:
         Returns: A list of Bans
 
         """
-        data = await self._make_request('banlist')
+        data = await self._make_request(path="banlist")
         return [Ban(**ban) for ban in data]
 
     async def get_bans_min(self) -> List[int]:
-        data = await self._make_request('banlist/all')
+        data = await self._make_request(path="banlist/all")
 
         if data:
             if isinstance(data, int):
                 return [data]
             else:
-                return [int(uid) for uid in data.split('\n')]
+                return [int(uid) for uid in data.split("\n")]
         else:
             return []
 
-    async def add_ban(self, user_id: int, reason: str, message: Optional[str] = None) -> None:
+    async def add_ban(
+        self, user_id: int, reason: str, message: Optional[str] = None
+    ) -> None:
         """Adds a ban
 
         Args:
             user_id: ID of the banned user
             reason: Reason why the user was banned
         """
-        ban = {
-            "id": user_id,
-            "reason": reason
-        }
+        ban = {"id": user_id, "reason": reason}
         if message:
             ban["message"] = message
-        await self._make_request('banlist', method='post',
-                                 json=[ban])
+        await self._make_request(path="banlist", method="post", json=[ban])
 
     async def add_bans(self, data: List[Ban]) -> None:
         """Add a list of Bans
@@ -195,8 +189,7 @@ class Client:
             data: List of Ban objects
         """
         _data = [{"id": d.id, "reason": d.reason} for d in data]
-        await self._make_request('banlist', method='post',
-                                 json=_data)
+        await self._make_request(path="banlist", method="post", json=_data)
 
     async def get_ban(self, user_id: int) -> Union[Ban, bool]:
         """Gets a ban
@@ -208,20 +201,21 @@ class Client:
 
         """
         try:
-            data = await self._make_request(f'banlist/{user_id}')
+            data = await self._make_request(path=f"banlist/{user_id}")
             return Ban(**data)
         except NotFoundError:
             return False
 
     async def delete_ban(self, user_id: int) -> None:
         """Remove a ban"""
-        await self._make_request(f'banlist/{user_id}', method='delete')
+        await self._make_request(path=f"banlist/{user_id}", method="delete")
 
     # endregion
 
     # region Stats
     async def stats(self) -> Dict[str, int]:
         """Get ban stats"""
-        data = await self._make_request('stats')
+        data = await self._make_request(path="stats")
         return data
+
     # endregion
