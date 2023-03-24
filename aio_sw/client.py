@@ -160,13 +160,12 @@ class Client:
     async def get_bans_min(self) -> List[int]:
         data = await self._make_request(path="banlist/all")
 
-        if data:
-            if isinstance(data, int):
-                return [data]
-            else:
-                return [int(uid) for uid in data.split("\n")]
-        else:
+        if not data:
             return []
+        if isinstance(data, int):
+            return [data]
+        else:
+            return [int(uid) for uid in data.split("\n")]
 
     async def add_ban(
         self, user_id: int, reason: str, message: Optional[str] = None
@@ -215,7 +214,6 @@ class Client:
     # region Stats
     async def stats(self) -> Dict[str, int]:
         """Get ban stats"""
-        data = await self._make_request(path="stats")
-        return data
+        return await self._make_request(path="stats")
 
     # endregion
