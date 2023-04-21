@@ -1,18 +1,33 @@
-# Asyncio SpamWatch API Wrapper
+<h1 assign="center">aio-spamwatch<h1>
 
-## Basic Usage
+[![PyPI version](https://img.shields.io/pypi/v/aio-spamwatch.svg)](https://pypi.org/project/aio-spamwatch/)
+[![License](https://img.shields.io/github/license/NachABR/aio-spamwatch.svg)](https://github.com/NachABR/aio-spamwatch/blob/master/LICENSE)
+[![Code style: black](https://img.shields.io/badge/code%20style-black-000000.svg)](https://github.com/psf/black)
 
+An asynchronous Python wrapper for the [SpamWatch API](https://spamwat.ch/).
+
+## Installation
+
+```bash
+pip install aio-spamwatch
+```
+
+## Usage
 ```python
 import asyncio
-import aio_sw
+from aio_spamwatch import SpamwatchAPI
 
-token = 'A_LONG_TOKEN_HERE'
-client = aio_sw.Client(token)
+client = SpamwatchAPI(token="TOKEN_HERE")
+
 
 async def main():
-    r = await client.version()
-    print(r)
+    # import aiohttp
+    # client = SpamwatchAPI(token="TOKEN_HERE", session=aiohttp.ClientSession())
+    version = await client.version()
+    print(version)
 
-loop = asyncio.get_event_loop()
-loop.run_until_complete(main())
+
+asyncio.run(main())
 ```
+
+

@@ -1,3 +1,0 @@
-[flake8]
-exclude = .git,__pycache__,build,dist,migrations,server,config.py
-max_line_length = 100
