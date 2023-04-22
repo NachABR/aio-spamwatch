@@ -3,8 +3,12 @@ name = "aio-spamwatch"
 version = "0.0.5"
 description = "An asynchronous Python wrapper for the SpamWatch API."
 authors = ["NachABR <nachabr@protonmail.com>"]
-license = "License :: OSI Approved :: GNU Lesser General Public License v3 (LGPLv3)"
+license = "LGPLv3"
+homepage = "https://github.com/NachABR/aio-spamwatch"
+repository = "https://github.com/NachABR/aio-spamwatch.git"
+keywords = ["spamwatch", "asynchronous", "aiohttp", "telegram"]
 readme = "README.md"
+
 packages = [{include = "src"}]
 
 [tool.poetry.dependencies]
