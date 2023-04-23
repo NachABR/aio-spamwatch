@@ -9,7 +9,7 @@ from .errors import (
 )
 from .types import Ban, Permission, Token
 
-__version__ = "0.0.6"
+__version__ = "0.0.7"
 __all__ = (
     "SpamWatchAPI",
     "Ban",
