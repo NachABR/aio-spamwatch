@@ -9,7 +9,7 @@ repository = "https://github.com/NachABR/aio-spamwatch.git"
 keywords = ["spamwatch", "asynchronous", "aiohttp", "telegram"]
 readme = "README.md"
 
-packages = [{include = "src"}]
+packages = [{include = "aio_spamwatch", from = "src"}]
 
 [tool.poetry.dependencies]
 python = "^3.10"
